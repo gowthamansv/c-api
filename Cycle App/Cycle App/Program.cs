@@ -36,6 +36,7 @@ var jwtSettings =
         "JWT settings are not configured.");
 
 // JWT Authentication
+// Authentication
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -58,6 +59,8 @@ builder.Services
             };
     });
 
+// Authorization
+builder.Services.AddAuthorization();
 // Authorizationbuilder.Services.AddAuthorization();
 
 builder.Services.AddCors(options =>
@@ -76,9 +79,11 @@ var app = builder.Build();
 app.UseCors("Frontend");
 
 app.UseAuthentication();
+
 app.UseAuthorization();
 
 app.UseFastEndpoints();
+
 app.UseSwaggerGen();
 
 app.Run();
