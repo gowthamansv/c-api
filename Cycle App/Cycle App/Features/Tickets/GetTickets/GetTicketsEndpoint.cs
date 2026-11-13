@@ -1,0 +1,100 @@
+﻿using Cycle_App.Data;
+using CycleMaintenance.Features.Tickets.GetTicket;
+using Dapper;
+using FastEndpoints;
+
+namespace CycleMaintenance.Features.Tickets.GetTickets;
+
+public class GetTicketsEndpoint
+    : EndpointWithoutRequest<List<GetTicketResponse>>
+{
+    private readonly IDbConnectionFactory _dbConnectionFactory;
+
+    public GetTicketsEndpoint(
+        IDbConnectionFactory dbConnectionFactory)
+    {
+        _dbConnectionFactory = dbConnectionFactory;
+    }
+
+    public override void Configure()
+    {
+        Get("/api/tickets");
+        AllowAnonymous();
+    }
+
+    public override async Task HandleAsync(CancellationToken ct)
+    {
+        using var connection = _dbConnectionFactory.CreateConnection();
+
+        const string sql = """
+            SELECT
+                t.Id,
+                t.CustomerId,
+                t.CycleId,
+
+                c.Name AS CustomerName,
+                cy.Model AS CycleModel,
+                cy.SerialNumber,
+
+                t.CompanyName,
+
+                t.StatusId,
+                s.Name AS Status,
+
+                t.PriorityId,
+                p.Name AS Priority,
+
+                t.AssigneeId,
+                CONCAT(u.FirstName, ' ', COALESCE(u.LastName, '')) AS AssigneeName,
+
+                t.ContactPhone,
+                t.ContactEmail,
+                t.Description,
+
+                t.UDF1, 
+                t.UDF2, 
+                t.UDF3, 
+                t.UDF4, 
+                t.UDF5, 
+                t.UDF6, 
+                t.UDF7, 
+                t.UDF8, 
+                t.UDF9, 
+                t.UDF10,
+            
+                t.CreatedAt,
+                t.UpdatedAt,
+
+                t.UpdatedBy,
+                CONCAT(ub.FirstName, ' ', COALESCE(ub.LastName, '')) AS UpdatedByName
+
+            FROM Tickets t
+
+            INNER JOIN Customers c
+                ON t.CustomerId = c.Id
+
+            INNER JOIN Cycles cy
+                ON t.CycleId = cy.Id
+
+            INNER JOIN Statuses s
+                ON t.StatusId = s.Id
+
+            INNER JOIN Priorities p
+                ON t.PriorityId = p.Id
+
+            LEFT JOIN Users u
+                ON t.AssigneeId = u.Id
+
+            LEFT JOIN Users ub
+                ON t.UpdatedBy = ub.Id
+
+            ORDER BY t.CreatedAt DESC;
+            """;
+
+        var tickets = await connection.QueryAsync<GetTicketResponse>(sql);
+
+        await Send.OkAsync(
+            tickets.ToList(),
+            ct);
+    }
+}
