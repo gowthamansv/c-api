@@ -1,3 +1,4 @@
+
 using System.Text;
 using Cycle_App.Data;
 using Cycle_App.Services.WhatsApp;
@@ -28,41 +29,37 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.Configure<JwtSettings>(
     builder.Configuration.GetSection("Jwt"));
 
-var jwtSettings =
-    builder.Configuration
-        .GetSection("Jwt")
-        .Get<JwtSettings>()
-    ?? throw new InvalidOperationException(
-        "JWT settings are not configured.");
+var jwtSettings = builder.Configuration
+    .GetSection("Jwt")
+    .Get<JwtSettings>()
+    ?? throw new InvalidOperationException("JWT settings are not configured.");
 
 // JWT Authentication
-// Authentication
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.TokenValidationParameters =
-            new TokenValidationParameters
-            {
-                ValidateIssuer = true,
-                ValidIssuer = jwtSettings.Issuer,
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = jwtSettings.Issuer,
 
-                ValidateAudience = true,
-                ValidAudience = jwtSettings.Audience,
+            ValidateAudience = true,
+            ValidAudience = jwtSettings.Audience,
 
-                ValidateLifetime = true,
+            ValidateLifetime = true,
 
-                IssuerSigningKey = new SymmetricSecurityKey(
-                    Encoding.UTF8.GetBytes(jwtSettings.Secret)),
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(jwtSettings.Secret)),
 
-                ValidateIssuerSigningKey = true
-            };
+            ValidateIssuerSigningKey = true
+        };
     });
 
 // Authorization
 builder.Services.AddAuthorization();
-// Authorizationbuilder.Services.AddAuthorization();
 
+// CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
@@ -76,14 +73,12 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Middleware
 app.UseCors("Frontend");
-
 app.UseAuthentication();
-
 app.UseAuthorization();
 
 app.UseFastEndpoints();
-
 app.UseSwaggerGen();
 
 app.Run();
