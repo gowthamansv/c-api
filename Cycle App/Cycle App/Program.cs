@@ -58,21 +58,27 @@ builder.Services
             };
     });
 
-// Authorization
-builder.Services.AddAuthorization();
+// Authorizationbuilder.Services.AddAuthorization();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("Frontend", policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:4200")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
 
 var app = builder.Build();
 
-// Authentication
-app.UseAuthentication();
+app.UseCors("Frontend");
 
-// Authorization
+app.UseAuthentication();
 app.UseAuthorization();
 
-// FastEndpoints
 app.UseFastEndpoints();
-
-// Swagger
 app.UseSwaggerGen();
 
 app.Run();
