@@ -1,4 +1,5 @@
-﻿using System.IdentityModel.Tokens.Jwt;
+﻿
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.Extensions.Options;
@@ -13,6 +14,13 @@ public class JwtService : IJwtService
     public JwtService(IOptions<JwtSettings> jwtOptions)
     {
         _jwtSettings = jwtOptions.Value;
+
+        if (string.IsNullOrWhiteSpace(_jwtSettings.Secret))
+            throw new InvalidOperationException("JWT Secret is missing.");
+
+        if (Encoding.UTF8.GetByteCount(_jwtSettings.Secret) < 32)
+            throw new InvalidOperationException(
+                "JWT Secret must be at least 32 bytes for HS256.");
     }
 
     public string GenerateToken(
@@ -42,7 +50,6 @@ public class JwtService : IJwtService
                 _jwtSettings.ExpirationMinutes),
             signingCredentials: credentials);
 
-        return new JwtSecurityTokenHandler()
-            .WriteToken(token);
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }
