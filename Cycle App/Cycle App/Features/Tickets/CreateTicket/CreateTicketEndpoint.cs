@@ -10,14 +10,17 @@ public class CreateTicketEndpoint
 {
     private readonly IDbConnectionFactory _dbConnectionFactory;
     private readonly ICurrentUserService _currentUser;
+    private readonly ILogger<CreateTicketEndpoint> _logger;
 
-    public CreateTicketEndpoint(
-        IDbConnectionFactory dbConnectionFactory,
-        ICurrentUserService currentUser)
-    {
-        _dbConnectionFactory = dbConnectionFactory;
-        _currentUser = currentUser;
-    }
+   public CreateTicketEndpoint(
+    IDbConnectionFactory dbConnectionFactory,
+    ICurrentUserService currentUser,
+    ILogger<CreateTicketEndpoint> logger)
+{
+    _dbConnectionFactory = dbConnectionFactory;
+    _currentUser = currentUser;
+    _logger = logger;
+}
 
     public override void Configure()
     {
@@ -122,22 +125,43 @@ public class CreateTicketEndpoint
                 CreatedBy;
             """;
 
-        var ticket = await connection.QuerySingleAsync<CreateTicketResponse>(
-            sql,
-            new
-            {
-                req.CustomerId,
-                req.CycleId,
-                req.CompanyName,
-                req.StatusId,
-                req.PriorityId,
-                req.AssigneeId,
-                req.ContactPhone,
-                req.ContactEmail,
-                req.Description,
-                CreatedBy = _currentUser.UserId
-            });
+            try
+{
+    var ticket = await connection.QuerySingleAsync<CreateTicketResponse>(
+        sql,
+        new
+        {
+            req.CustomerId,
+            req.CycleId,
+            req.CompanyName,
+            req.StatusId,
+            req.PriorityId,
+            req.AssigneeId,
+            req.ContactPhone,
+            req.ContactEmail,
+            req.Description,
 
-        await Send.OkAsync(ticket, ct);
+            req.UDF1,
+            req.UDF2,
+            req.UDF3,
+            req.UDF4,
+            req.UDF5,
+            req.UDF6,
+            req.UDF7,
+            req.UDF8,
+            req.UDF9,
+            req.UDF10,
+
+            CreatedBy = _currentUser.UserId
+        });
+
+    await Send.OkAsync(ticket, ct);
+}
+catch (Exception ex)
+{
+    _logger.LogError(ex, "Failed to create ticket");
+
+    throw;
+}
     }
 }
