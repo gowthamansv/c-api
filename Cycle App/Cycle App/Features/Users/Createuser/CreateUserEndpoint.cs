@@ -1,4 +1,5 @@
-﻿using Cycle_App.Data;
+﻿
+using Cycle_App.Data;
 using CycleMaintenance.Services.Authentication;
 using Dapper;
 using FastEndpoints;
@@ -27,7 +28,7 @@ public class CreateUserEndpoint
         Post("/api/users");
 
         // Temporary during development.
-        // Later this endpoint will be restricted to Admin users.
+        // Later restrict this endpoint to Admin users.
         AllowAnonymous();
     }
 
@@ -37,15 +38,25 @@ public class CreateUserEndpoint
     {
         using var connection = _dbConnectionFactory.CreateConnection();
 
+        // IMPORTANT: Open the database connection first.
+        if (connection is Npgsql.NpgsqlConnection npgsqlConnection)
+        {
+            await npgsqlConnection.OpenAsync(ct);
+        }
+        else
+        {
+            connection.Open();
+        }
+
         using var transaction = connection.BeginTransaction();
 
         try
         {
-            // 1. Hash the user's password.
+            // 1. Hash password
             var passwordHash =
                 _passwordHasher.HashPassword(req.Password);
 
-            // 2. Create the user as inactive.
+            // 2. Create inactive user
             const string userSql = """
                 INSERT INTO Users
                 (
@@ -63,7 +74,7 @@ public class CreateUserEndpoint
                     @Email,
                     @PhoneNumber,
                     @PasswordHash,
-                    FALSE
+                    TRUE
                 )
                 RETURNING
                     Id,
@@ -87,7 +98,7 @@ public class CreateUserEndpoint
                 },
                 transaction);
 
-            // 3. Assign roles to the user.
+            // 3. Assign roles
             const string roleSql = """
                 INSERT INTO UserRoles
                 (
@@ -117,7 +128,7 @@ public class CreateUserEndpoint
                     transaction);
             }
 
-            // 4. Assign groups to the user.
+            // 4. Assign groups
             const string groupSql = """
                 INSERT INTO UserGroups
                 (
@@ -147,20 +158,20 @@ public class CreateUserEndpoint
                     transaction);
             }
 
-            // 5. Commit user, roles, and groups together.
+            // 5. Commit database transaction
             transaction.Commit();
 
-            // 6. Generate an account activation token.
+            // 6. Generate activation token
             var activationToken =
                 await _accountActivationService.CreateActivationTokenAsync(
                     user.Id,
                     ct);
 
-            // Temporary development output.
+            // Temporary development output
             Console.WriteLine(
                 $"Activation token for user {user.Id}: {activationToken}");
 
-            // 7. Return the newly created user.
+            // 7. Return response
             await Send.OkAsync(user, ct);
         }
         catch
