@@ -104,8 +104,29 @@ public class LoginEndpoint
                 })
         ).ToList();
 
+        const string groupSql = """
+            SELECT
+                r.Id,
+                r.Name
+            FROM UserGroups ur
+            INNER JOIN Groups r
+                ON ur.GroupId = r.Id
+            WHERE ur.UserId = @UserId
+              AND r.IsActive = TRUE
+            ORDER BY r.Name;
+            """;
+
+        var groups = (
+            await connection.QueryAsync<RoleResponse>(
+                groupSql,
+                new
+                {
+                    UserId = user.Id
+                })
+        ).ToList();
+
         // 6. Calculate the token expiration time.
-        var expiresAt = DateTime.UtcNow.AddMinutes(60);
+        var expiresAt = DateTime.UtcNow.AddMinutes(600);
 
         // 7. Generate the JWT.
         var accessToken = _jwtService.GenerateToken(
@@ -122,7 +143,8 @@ public class LoginEndpoint
                 UserId = user.Id,
                 FirstName = user.FirstName,
                 Email = user.Email,
-                Roles = roles
+                Roles = roles,
+                Groups = groups
             },
             ct);
     }

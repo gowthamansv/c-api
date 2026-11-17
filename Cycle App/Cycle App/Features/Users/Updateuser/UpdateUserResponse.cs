@@ -1,6 +1,3 @@
-
-namespace CycleMaintenance.Features.Users.UpdateUser;
-
 public class UpdateUserResponse
 {
     public Guid Id { get; set; }

@@ -1,0 +1,16 @@
+namespace CycleMaintenance.Features.Cycles.GetCycles;
+
+public class GetCycleResponse
+{
+    public Guid Id { get; set; }
+
+    public Guid CustomerId { get; set; }
+
+    public string Model { get; set; } = string.Empty;
+
+    public string SerialNumber { get; set; } = string.Empty;
+
+    public Guid QrToken { get; set; }
+
+    public DateTime CreatedAt { get; set; }
+}

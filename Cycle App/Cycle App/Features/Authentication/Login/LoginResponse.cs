@@ -13,6 +13,9 @@ public class LoginResponse
     public string? Email { get; set; }
 
     public List<RoleResponse> Roles { get; set; } = [];
+
+    public List<RoleResponse> Groups { get; set; } = [];
+
 }
 
 public class RoleResponse

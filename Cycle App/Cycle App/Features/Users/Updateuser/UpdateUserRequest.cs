@@ -1,6 +1,3 @@
-
-namespace CycleMaintenance.Features.Users.UpdateUser;
-
 public class UpdateUserRequest
 {
     // User ID from the URL
@@ -18,9 +15,9 @@ public class UpdateUserRequest
     // Account status
     public bool IsActive { get; set; }
 
-    // Assigned roles
-    public List<Guid> RoleIds { get; set; } = new();
 
-    // Assigned groups
-    public List<Guid> GroupIds { get; set; } = new();
+
+    public List<Guid>? RoleIds { get; set; }
+
+    public List<Guid>? GroupIds { get; set; }
 }

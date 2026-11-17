@@ -98,68 +98,81 @@ public class CreateUserEndpoint
                 },
                 transaction);
 
-            // 3. Assign roles
-            const string roleSql = """
-                INSERT INTO UserRoles
-                (
-                    Id,
-                    UserId,
-                    RoleId,
-                    CreatedAt
-                )
-                VALUES
-                (
-                    gen_random_uuid(),
-                    @UserId,
-                    @RoleId,
-                    NOW()
-                );
-                """;
+            
+// 3. Assign roles
+const string roleSql = """
+    INSERT INTO UserRoles
+    (
+        Id,
+        UserId,
+        RoleId,
+        CreatedAt
+    )
+    VALUES
+    (
+        gen_random_uuid(),
+        @UserId,
+        @RoleId,
+        NOW()
+    );
+    """;
 
-            foreach (var roleId in req.RoleIds.Distinct())
-            {
-                await connection.ExecuteAsync(
-                    roleSql,
-                    new
-                    {
-                        UserId = user.Id,
-                        RoleId = roleId
-                    },
-                    transaction);
-            }
+int roleInsertCount = 0;
 
-            // 4. Assign groups
-            const string groupSql = """
-                INSERT INTO UserGroups
-                (
-                    Id,
-                    UserId,
-                    GroupId,
-                    CreatedAt
-                )
-                VALUES
-                (
-                    gen_random_uuid(),
-                    @UserId,
-                    @GroupId,
-                    NOW()
-                );
-                """;
+foreach (var roleId in (req.RoleIds ?? []).Distinct())
+{
+    var affectedRows = await connection.ExecuteAsync(
+        roleSql,
+        new
+        {
+            UserId = user.Id,
+            RoleId = roleId
+        },
+        transaction
+    );
 
-            foreach (var groupId in req.GroupIds.Distinct())
-            {
-                await connection.ExecuteAsync(
-                    groupSql,
-                    new
-                    {
-                        UserId = user.Id,
-                        GroupId = groupId
-                    },
-                    transaction);
-            }
+    roleInsertCount += affectedRows;
+}
 
-            // 5. Commit database transaction
-            transaction.Commit();
+// 4. Assign groups
+const string groupSql = """
+    INSERT INTO UserGroups
+    (
+        Id,
+        UserId,
+        GroupId,
+        CreatedAt
+    )
+    VALUES
+    (
+        gen_random_uuid(),
+        @UserId,
+        @GroupId,
+        NOW()
+    );
+    """;
+
+int groupInsertCount = 0;
+
+foreach (var groupId in (req.GroupIds ?? []).Distinct())
+{
+    var affectedRows = await connection.ExecuteAsync(
+        groupSql,
+        new
+        {
+            UserId = user.Id,
+            GroupId = groupId
+        },
+        transaction
+    );
+
+    groupInsertCount += affectedRows;
+}
+
+
+// 5. Commit transaction
+transaction.Commit();
+
 
             // 6. Generate activation token
             var activationToken =

@@ -1,5 +1,6 @@
 
 using Cycle_App.Data;
+using CycleMaintenance.Services.Authentication;
 using Dapper;
 using FastEndpoints;
 using Npgsql;
@@ -30,6 +31,9 @@ public class UpdateUserEndpoint
         UpdateUserRequest req,
         CancellationToken ct)
     {
+        // 1. Get user ID from route
+        var userId = Route<Guid>("id");
+
         using var connection = _dbConnectionFactory.CreateConnection();
 
         if (connection is not NpgsqlConnection dbConnection)
@@ -38,15 +42,17 @@ public class UpdateUserEndpoint
                 "Expected an Npgsql database connection.");
         }
 
-        // 1. Open database connection
+        // 2. Open database connection
         await dbConnection.OpenAsync(ct);
 
-        // 2. Begin transaction
-        using var transaction = dbConnection.BeginTransaction();
+        // 3. Begin transaction
+        using var transaction = await dbConnection.BeginTransactionAsync(ct);
 
         try
         {
-            // 3. Update user details
+            
+
+            // 5. Update user details
             const string updateUserSql = """
                 UPDATE Users
                 SET
@@ -70,7 +76,7 @@ public class UpdateUserEndpoint
                 updateUserSql,
                 new
                 {
-                    req.Id,
+                    Id = userId,
                     req.FirstName,
                     req.LastName,
                     req.Email,
@@ -79,16 +85,16 @@ public class UpdateUserEndpoint
                 },
                 transaction);
 
-            // 4. Check whether user exists
+            // 6. Check whether user exists
             if (user == null)
             {
-                transaction.Rollback();
+                await transaction.RollbackAsync(ct);
 
                 await Send.NotFoundAsync(ct);
                 return;
             }
 
-            // 5. Remove previous role assignments
+            // 7. Remove previous role assignments
             const string deleteRolesSql = """
                 DELETE FROM UserRoles
                 WHERE UserId = @UserId;
@@ -96,10 +102,10 @@ public class UpdateUserEndpoint
 
             await dbConnection.ExecuteAsync(
                 deleteRolesSql,
-                new { UserId = req.Id },
+                new { UserId = userId },
                 transaction);
 
-            // 6. Insert updated role assignments
+            // 8. Insert updated role assignments
             const string insertRoleSql = """
                 INSERT INTO UserRoles
                 (
@@ -123,13 +129,13 @@ public class UpdateUserEndpoint
                     insertRoleSql,
                     new
                     {
-                        UserId = req.Id,
+                        UserId = userId,
                         RoleId = roleId
                     },
                     transaction);
             }
 
-            // 7. Remove previous group assignments
+            // 9. Remove previous group assignments
             const string deleteGroupsSql = """
                 DELETE FROM UserGroups
                 WHERE UserId = @UserId;
@@ -137,10 +143,10 @@ public class UpdateUserEndpoint
 
             await dbConnection.ExecuteAsync(
                 deleteGroupsSql,
-                new { UserId = req.Id },
+                new { UserId = userId },
                 transaction);
 
-            // 8. Insert updated group assignments
+            // 10. Insert updated group assignments
             const string insertGroupSql = """
                 INSERT INTO UserGroups
                 (
@@ -164,21 +170,21 @@ public class UpdateUserEndpoint
                     insertGroupSql,
                     new
                     {
-                        UserId = req.Id,
+                        UserId = userId,
                         GroupId = groupId
                     },
                     transaction);
             }
 
-            // 9. Commit all changes
-            transaction.Commit();
+            // 11. Commit all changes
+            await transaction.CommitAsync(ct);
 
-            // 10. Return updated user
+            // 12. Return updated user
             await Send.OkAsync(user, ct);
         }
         catch
         {
-            transaction.Rollback();
+            await transaction.RollbackAsync(ct);
             throw;
         }
     }
