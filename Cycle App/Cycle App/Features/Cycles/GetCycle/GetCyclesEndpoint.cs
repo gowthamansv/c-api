@@ -6,7 +6,7 @@ using FastEndpoints;
 namespace CycleMaintenance.Features.Cycles.GetCycle;
 
 public class GetCyclesEndpoint
-    : Endpoint<EmptyRequest, List<GetCycleResponse>>
+    : Endpoint<EmptyRequest, List<GetCyclesResponse>>
 {
     private readonly IDbConnectionFactory _dbConnectionFactory;
 
@@ -29,39 +29,24 @@ public class GetCyclesEndpoint
         using var connection = _dbConnectionFactory.CreateConnection();
 
         const string sql = """
-            SELECT
-                Id,
-                CustomerId,
-                Model,
-                SerialNumber,
-                QrToken,
-                CreatedAt
-            FROM Cycles
-            ORDER BY CreatedAt DESC;
-            """;
+    SELECT
+        c.Id,
+        c.CustomerId,
+        cu.Name AS CustomerName,
+        c.Model,
+        c.SerialNumber,
+        c.QrToken,
+        c.CreatedAt
+    FROM Cycles c
+    LEFT JOIN Customers cu ON cu.Id = c.CustomerId
+    ORDER BY cu.Name;
+    """;
+        var cycles = await connection.QueryAsync<GetCyclesResponse>(sql);
 
-        var cycles = await connection.QueryAsync<GetCycleResponse>(
-            new CommandDefinition(
-                sql,
-                cancellationToken: ct
-            )
-        );
+Response = cycles.ToList();
 
-        await Send.OkAsync(cycles.ToList(), ct);
+        await Send.OkAsync(Response, ct);
     }
 }
 
-public class GetCycleResponse
-{
-    public Guid Id { get; set; }
 
-    public Guid CustomerId { get; set; }
-
-    public string Model { get; set; } = string.Empty;
-
-    public string SerialNumber { get; set; } = string.Empty;
-
-    public Guid QrToken { get; set; }
-
-    public DateTime CreatedAt { get; set; }
-}
