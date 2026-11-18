@@ -2,6 +2,7 @@
 using CycleMaintenance.Services.Authentication;
 using Dapper;
 using FastEndpoints;
+using Microsoft.Extensions.Options;
 
 namespace CycleMaintenance.Features.Authentication.Login;
 
@@ -11,15 +12,18 @@ public class LoginEndpoint
     private readonly IDbConnectionFactory _dbConnectionFactory;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtService _jwtService;
+    private readonly JwtSettings _jwtSettings;
 
     public LoginEndpoint(
         IDbConnectionFactory dbConnectionFactory,
         IPasswordHasher passwordHasher,
-        IJwtService jwtService)
+        IJwtService jwtService,
+        IOptions<JwtSettings> jwtSettings)
     {
         _dbConnectionFactory = dbConnectionFactory;
         _passwordHasher = passwordHasher;
         _jwtService = jwtService;
+        _jwtSettings = jwtSettings.Value;
     }
 
     public override void Configure()
@@ -126,7 +130,9 @@ public class LoginEndpoint
         ).ToList();
 
         // 6. Calculate the token expiration time.
-        var expiresAt = DateTime.UtcNow.AddMinutes(600);
+        var expiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpirationMinutes);
+
+        var expiresAtIst = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(expiresAt, "India Standard Time");
 
         // 7. Generate the JWT.
         var accessToken = _jwtService.GenerateToken(
@@ -139,7 +145,7 @@ public class LoginEndpoint
             new LoginResponse
             {
                 AccessToken = accessToken,
-                ExpiresAt = expiresAt,
+                ExpiresAt = expiresAtIst,
                 UserId = user.Id,
                 FirstName = user.FirstName,
                 Email = user.Email,
